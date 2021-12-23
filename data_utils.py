@@ -84,12 +84,13 @@ def _parse_fn(example_serialized, is_training):
     # TODO resize image to be able to load batches, crop if bigger than (896,512), add second image otherwise(mosaic) )
     # else:
     #    image = tf.image.resize(image, (896, 512))
-    label = parsed["image/object/class/label"]
+    image = tf.image.resize_with_crop_or_pad(image, 512, 896) # TODO change to correct resizing function which includes bboxes
+    labels = parsed["image/object/class/label"]
     bbox_xmin = parsed["image/object/bbox/xmin"]
     bbox_xmax = parsed["image/object/bbox/xmax"]
     bbox_ymin = parsed["image/object/bbox/ymin"]
     bbox_ymax = parsed["image/object/bbox/ymax"]
-    return (image, label, (bbox_xmin, bbox_xmax, bbox_ymin, bbox_ymax))
+    return (image, labels, (bbox_xmin, bbox_xmax, bbox_ymin, bbox_ymax))
 
 
 def get_dataset(tfrecords_dir, subset, batch_size):
@@ -107,11 +108,11 @@ def get_dataset(tfrecords_dir, subset, batch_size):
     parser = partial(_parse_fn, is_training=True if subset == "training" else False)
     dataset = dataset.map(map_func=parser, num_parallel_calls=tf.data.AUTOTUNE)
     dataset = dataset.prefetch(buffer_size=tf.data.AUTOTUNE)
-    dataset = dataset.batch(batch_size=batch_size, drop_remainder=True)
+    dataset = dataset.padded_batch(batch_size=batch_size, drop_remainder=True)
     return dataset
 
 
-dataset = get_dataset("/home/lukas/Downloads/tfrecords_validation", "validation", 1)
+dataset = get_dataset("/home/lukas/Downloads/tfrecords_validation", "validation", 4)
 # print(dataset.take(1))
 image, label, bbox = next(iter(dataset))
-print(label, bbox)
+print(bbox[0][0], bbox[1][0])
